@@ -29,6 +29,18 @@ variable "ssh_public_key" {
   default = "~/.ssh/id_rsa.pub"
 }
 
+variable "namespace" {
+  default = "ratingsapp"
+}
+
 variable "dns_prefix" {
   default = "k8stest"
+}
+
+variable "mongodb_username" {
+  default = "mongouser"
+}
+
+variable "mongodb_database" {
+  default = "ratingsdb"
 }

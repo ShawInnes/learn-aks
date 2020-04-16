@@ -5,3 +5,15 @@ provider "azurerm" {
   features {
   }
 }
+
+provider "helm" {
+  version = "~> 1.1"
+}
+
+provider "random" {
+  version = "~> 2.2"
+}
+
+provider "kubernetes" {
+  version = "~> 1.11"
+}

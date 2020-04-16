@@ -38,6 +38,8 @@ resource "azurerm_kubernetes_cluster" "aks" {
   resource_group_name = azurerm_resource_group.aks.name
   dns_prefix = var.dns_prefix
 
+  kubernetes_version = "1.16.7"
+
   linux_profile {
     admin_username = "ubuntu"
 
@@ -56,8 +58,11 @@ resource "azurerm_kubernetes_cluster" "aks" {
     client_id = var.client_id
     client_secret = var.client_secret
   }
+}
 
-  agent_pool_profile {
+resource "kubernetes_namespace" "aks" {
+  metadata {
+    name = var.namespace
   }
 }
 
@@ -66,5 +71,201 @@ resource "azurerm_container_registry" "aks" {
   location = var.REGION_NAME
   resource_group_name = azurerm_resource_group.aks.name
   sku = "Standard"
+}
+
+data "helm_repository" "bitnami" {
+  name = "bitnami"
+  url = "https://charts.bitnami.com/bitnami"
+}
+
+resource "random_password" "mongouser" {
+  length = 16
+  special = false
+}
+
+resource "helm_release" "mongo" {
+  name = "ratings"
+  chart = "mongodb"
+  namespace = kubernetes_namespace.aks.metadata.0.name
+  repository = data.helm_repository.bitnami.metadata.0.name
+  set {
+    name = "mongodbUsername"
+    value = var.mongodb_username
+  }
+  set {
+    name = "mongodbPassword"
+    value = random_password.mongouser.result
+  }
+  set {
+    name = "mongodbDatabase"
+    value = var.mongodb_database
+  }
+}
+
+locals {
+  api_container_name = "ratings-api"
+  web_container_name = "ratings-web"
+  MONGOCONNECTION = "mongodb://${var.mongodb_username}:${random_password.mongouser.result}@${helm_release.mongo.name}-mongodb.${var.namespace}.svc.cluster.local:27017/${var.mongodb_database}"
+}
+
+resource "kubernetes_secret" "mongosecret" {
+  metadata {
+    name = "mongosecret"
+    namespace = kubernetes_namespace.aks.metadata.0.name
+  }
+
+  data = {
+    MONGOCONNECTION = local.MONGOCONNECTION
+  }
+}
+
+resource "kubernetes_deployment" "ratings-api" {
+  metadata {
+    name = local.api_container_name
+    namespace = kubernetes_namespace.aks.metadata.0.name
+    labels = {
+      app = local.api_container_name
+    }
+  }
+  spec {
+    selector {
+      match_labels = {
+        app = local.api_container_name
+      }
+    }
+    template {
+      metadata {
+        labels = {
+          app = local.api_container_name
+        }
+      }
+      spec {
+        container {
+          name = local.api_container_name
+          image = "${azurerm_container_registry.aks.login_server}/${local.api_container_name}:v1"
+          image_pull_policy = "Always"
+          port {
+            container_port = 3000
+          }
+          env {
+            name = "MONGODB_URI"
+            value_from {
+              secret_key_ref {
+                name = "mongosecret"
+                key = "MONGOCONNECTION"
+              }
+            }
+          }
+          resources {
+            requests {
+              cpu = "250m"
+              memory = "64Mi"
+            }
+            limits {
+              cpu = "500m"
+              memory = "256Mi"
+            }
+          }
+          readiness_probe {
+            http_get {
+              port = "3000"
+              path = "/healthz"
+            }
+          }
+          liveness_probe {
+            http_get {
+              port = "3000"
+              path = "/healthz"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+resource "kubernetes_service" "ratings-api" {
+  metadata {
+    name = local.api_container_name
+    namespace = kubernetes_namespace.aks.metadata.0.name
+  }
+  spec {
+    selector = {
+      app = local.api_container_name
+    }
+    port {
+      port = 80
+      protocol = "TCP"
+      target_port = "3000"
+    }
+    type = "ClusterIP"
+  }
+}
+
+resource "kubernetes_deployment" "ratings-web" {
+  metadata {
+    name = local.web_container_name
+    namespace = kubernetes_namespace.aks.metadata.0.name
+    labels = {
+      app = local.web_container_name
+    }
+  }
+  spec {
+    selector {
+      match_labels = {
+        app = local.web_container_name
+      }
+    }
+    template {
+      metadata {
+        labels = {
+          app = local.web_container_name
+        }
+      }
+      spec {
+        container {
+          name = local.web_container_name
+          image = "${azurerm_container_registry.aks.login_server}/${local.web_container_name}:v1"
+          image_pull_policy = "Always"
+          port {
+            container_port = 8080
+          }
+          env {
+            name = "API"
+            value = "http://${local.api_container_name}.${kubernetes_namespace.aks.metadata.0.name}.svc.cluster.local"
+          }
+          resources {
+            requests {
+              cpu = "250m"
+              memory = "64Mi"
+            }
+            limits {
+              cpu = "500m"
+              memory = "256Mi"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+
+resource "kubernetes_service" "ratings-web" {
+  metadata {
+    name = local.web_container_name
+    namespace = kubernetes_namespace.aks.metadata.0.name
+  }
+  spec {
+    selector = {
+      app = local.web_container_name
+    }
+    port {
+      port = 80
+      protocol = "TCP"
+      target_port = "8080"
+    }
+    type = "LoadBalancer"
+  }
 }
 
