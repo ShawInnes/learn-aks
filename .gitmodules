@@ -1,0 +1,6 @@
+[submodule "mslearn-aks-workshop-ratings-api"]
+	path = mslearn-aks-workshop-ratings-api
+	url = https://github.com/MicrosoftDocs/mslearn-aks-workshop-ratings-api.git
+[submodule "mslearn-aks-workshop-ratings-web"]
+	path = mslearn-aks-workshop-ratings-web
+	url = https://github.com/MicrosoftDocs/mslearn-aks-workshop-ratings-web.git
