@@ -2,6 +2,8 @@ https://docs.microsoft.com/en-us/learn/modules/aks-workshop/01-introduction
 
 Current progress:  https://docs.microsoft.com/en-us/learn/modules/aks-workshop/07-deploy-ingress
 
+https://docs.microsoft.com/en-us/learn/modules/aks-workshop/media/02-arch.svg
+
 ```
 az login
 
