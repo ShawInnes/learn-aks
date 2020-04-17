@@ -64,3 +64,15 @@ export MONGODB_PASSWORD=$(kubectl get secret --namespace ratingsapp ratings-mong
 kubectl port-forward --namespace ratingsapp svc/ratings-mongodb 27017:27017 &
 mongo --host 127.0.0.1 --authenticationDatabase admin -p $MONGODB_ROOT_PASSWORD
 ```
+
+## Get Public IP for Ingress
+
+```bash
+kubectl get service nginx-ingress-controller --namespace ingress -w
+```
+
+## Install Cert-Manager Custom Resource
+
+```bash
+kubectl apply --validate=false -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.14/deploy/manifests/00-crds.yaml
+```

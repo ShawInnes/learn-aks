@@ -53,3 +53,11 @@ output "mongodb_password" {
 output "MONGOCONNECTION" {
   value = local.MONGOCONNECTION
 }
+
+output "load_balancer_ingress_ip" {
+  value = data.kubernetes_service.ingress.load_balancer_ingress.0.ip
+}
+
+output "load_balancer_ingress_name" {
+  value = local.load_balancer_ingress_name
+}

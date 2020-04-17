@@ -73,11 +73,6 @@ resource "azurerm_container_registry" "aks" {
   sku = "Standard"
 }
 
-data "helm_repository" "bitnami" {
-  name = "bitnami"
-  url = "https://charts.bitnami.com/bitnami"
-}
-
 resource "random_password" "mongouser" {
   length = 16
   special = false
@@ -250,7 +245,6 @@ resource "kubernetes_deployment" "ratings-web" {
   }
 }
 
-
 resource "kubernetes_service" "ratings-web" {
   metadata {
     name = local.web_container_name
@@ -265,7 +259,6 @@ resource "kubernetes_service" "ratings-web" {
       protocol = "TCP"
       target_port = "8080"
     }
-    type = "LoadBalancer"
+    type = "ClusterIP"
   }
 }
-
